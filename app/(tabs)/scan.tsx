@@ -1,0 +1,687 @@
+import { StyleSheet, View, TouchableOpacity, Modal, TextInput, Alert, ScrollView } from 'react-native';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Card } from '@/components/ui/card';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useState, useEffect, useRef } from 'react';
+import { useThemeColor } from '@/hooks/use-theme-color';
+import { useRouter } from 'expo-router';
+// Add these imports for camera functionality
+import { CameraView, Camera } from 'expo-camera';
+import { BarCodeScanner } from 'expo-barcode-scanner';
+
+export default function ScanScreen() {
+  const router = useRouter();
+  const [isManualEntryVisible, setIsManualEntryVisible] = useState(false);
+  const [manualBarcode, setManualBarcode] = useState('');
+  const [recentScans, setRecentScans] = useState([]);
+  const [hasPermission, setHasPermission] = useState(null);
+  const [scanned, setScanned] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [scannedBarcode, setScannedBarcode] = useState('');
+  const [isActionModalVisible, setIsActionModalVisible] = useState(false);
+  const [itemName, setItemName] = useState('');
+  const [quantityToRemove, setQuantityToRemove] = useState('1');
+  const [actionType, setActionType] = useState('add'); // 'add' or 'remove'
+  const cameraRef = useRef(null);
+
+  // Theme colors
+  const backgroundColor = useThemeColor({}, 'background');
+  const cardBackgroundColor = useThemeColor({}, 'cardBackground');
+  const borderColor = useThemeColor({}, 'border');
+  const textColor = useThemeColor({}, 'text');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
+  const textTertiaryColor = useThemeColor({}, 'textTertiary');
+  const primaryColor = useThemeColor({}, 'primary');
+  const dangerColor = useThemeColor({}, 'danger');
+  const successColor = useThemeColor({}, 'success');
+
+  useEffect(() => {
+    const getCameraPermissions = async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === 'granted');
+    };
+
+    getCameraPermissions();
+  }, []);
+
+  const handleBarCodeScanned = ({ type, data }) => {
+    setScanned(true);
+    setIsCameraActive(false);
+    
+    // Set the scanned barcode and show the action modal
+    setScannedBarcode(data);
+    setItemName(`Product ${data}`); // Default name based on barcode
+    
+    // Add to recent scans
+    const newScan = {
+      id: Date.now().toString(),
+      barcode: data,
+      timestamp: new Date().toLocaleTimeString(),
+      name: `Product ${data}`,
+      status: 'Scanned'
+    };
+    
+    setRecentScans(prevScans => [newScan, ...prevScans]);
+    
+    // Show action modal
+    setIsActionModalVisible(true);
+  };
+
+  const handleAddToInventory = () => {
+    if (!itemName.trim()) {
+      Alert.alert('Error', 'Please enter an item name');
+      return;
+    }
+    
+    // Navigate to inventory screen with the scanned barcode and item name
+    router.push({
+      pathname: '/inventory',
+      params: { 
+        scannedBarcode: scannedBarcode,
+        itemName: itemName,
+        action: 'add'
+      }
+    });
+    
+    // Close the modal
+    setIsActionModalVisible(false);
+    setItemName(''); // Reset item name
+    setScannedBarcode(''); // Reset scanned barcode
+  };
+
+  const handleRemoveFromInventory = () => {
+    const quantity = parseInt(quantityToRemove);
+    
+    if (isNaN(quantity) || quantity <= 0) {
+      Alert.alert('Error', 'Please enter a valid quantity');
+      return;
+    }
+    
+    // Navigate to inventory screen with the scanned barcode and quantity to remove
+    router.push({
+      pathname: '/inventory',
+      params: { 
+        scannedBarcode: scannedBarcode,
+        quantityToRemove: quantity.toString(),
+        action: 'remove'
+      }
+    });
+    
+    // Close the modal
+    setIsActionModalVisible(false);
+    setQuantityToRemove('1'); // Reset quantity
+    setScannedBarcode(''); // Reset scanned barcode
+  };
+
+  const handleManualEntrySubmit = () => {
+    if (!manualBarcode.trim()) {
+      Alert.alert('Error', 'Please enter a barcode');
+      return;
+    }
+    
+    // Simulate barcode scanning and add to recent scans
+    const newScan = {
+      id: Date.now().toString(),
+      barcode: manualBarcode,
+      timestamp: new Date().toLocaleTimeString(),
+      name: `Item ${manualBarcode}`,
+      status: 'Scanned'
+    };
+    
+    setRecentScans(prevScans => [newScan, ...prevScans]);
+    console.log('Manual barcode entry:', manualBarcode);
+    
+    // Set the scanned barcode and show the action modal
+    setScannedBarcode(manualBarcode);
+    setItemName(`Item ${manualBarcode}`); // Default name based on barcode
+    
+    // Show action modal
+    setIsActionModalVisible(true);
+    
+    setManualBarcode('');
+    setIsManualEntryVisible(false);
+  };
+
+  const handleCameraScan = () => {
+    if (hasPermission === false) {
+      Alert.alert('Permission required', 'Camera permission is needed to scan barcodes');
+      return;
+    }
+    
+    setIsCameraActive(true);
+    setScanned(false);
+  };
+
+  const closeCamera = () => {
+    setIsCameraActive(false);
+  };
+
+  const selectActionType = (type) => {
+    setActionType(type);
+  };
+
+  if (isCameraActive) {
+    return (
+      <ThemedView style={[styles.container, { backgroundColor: backgroundColor }]}>
+        <View style={styles.cameraHeader}>
+          <TouchableOpacity onPress={closeCamera} style={styles.closeButton}>
+            <MaterialIcons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+          <ThemedText type="title" style={[styles.cameraTitle, { color: '#fff' }]}>Scan Barcode</ThemedText>
+        </View>
+        
+        <CameraView
+          ref={cameraRef}
+          style={styles.cameraView}
+          facing="back"
+          onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+          barcodeScannerSettings={{
+            barcodeTypes: ["ean8", "ean13", "code39", "code128"]
+          }}
+        >
+          <View style={styles.cameraOverlay}>
+            <View style={styles.scanFrame}>
+              <MaterialIcons name="crop-free" size={200} color="#fff" />
+            </View>
+            <ThemedText style={[styles.cameraInstruction, { color: '#fff' }]}>
+              Align barcode within frame to scan
+            </ThemedText>
+          </View>
+        </CameraView>
+      </ThemedView>
+    );
+  }
+
+  return (
+    <ThemedView style={[styles.container, { backgroundColor: backgroundColor }]}>
+      <ThemedText type="title" style={[styles.title, { color: textColor }]}>Barcode Scanner</ThemedText>
+      
+      <Card style={[styles.scannerCard, { backgroundColor: cardBackgroundColor }]}>
+        <View style={styles.scannerHeader}>
+          <MaterialIcons name="qr-code-scanner" size={24} color={primaryColor} />
+          <ThemedText type="subtitle" style={[styles.sectionTitle, { color: textColor }]}>Scan Items</ThemedText>
+        </View>
+        
+        <View style={[styles.scannerPlaceholder, { borderColor: borderColor }]}>
+          <MaterialIcons name="qr-code" size={64} color={textTertiaryColor} />
+          <ThemedText style={[styles.placeholderText, { color: textTertiaryColor }]}>Point camera at barcode to scan</ThemedText>
+        </View>
+        
+        <View style={styles.scannerActions}>
+          <TouchableOpacity style={[styles.primaryButton, { backgroundColor: primaryColor }]} onPress={handleCameraScan}>
+            <MaterialIcons name="camera" size={24} color="#fff" />
+            <ThemedText style={[styles.primaryButtonText, { color: '#ffffff' }]}>Camera Scan</ThemedText>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.secondaryButton, { backgroundColor: cardBackgroundColor, borderColor: primaryColor }]}
+            onPress={() => setIsManualEntryVisible(true)}
+          >
+            <MaterialIcons name="keyboard" size={20} color={primaryColor} />
+            <ThemedText style={[styles.secondaryButtonText, { color: primaryColor }]}>Manual Entry</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </Card>
+      
+      <Card style={[styles.resultsCard, { backgroundColor: cardBackgroundColor }]}>
+        <View style={styles.resultsHeader}>
+          <ThemedText type="subtitle" style={[styles.sectionTitle, { color: textColor }]}>Recent Scans</ThemedText>
+          <ThemedText style={[styles.countText, { color: textTertiaryColor }]}>{recentScans.length} items</ThemedText>
+        </View>
+        
+        {recentScans.length > 0 ? (
+          <ScrollView style={styles.scansList}>
+            {recentScans.map((scan) => (
+              <View key={scan.id} style={[styles.scanItem, { borderBottomColor: borderColor }]}>
+                <View style={styles.scanItemHeader}>
+                  <ThemedText style={[styles.scanItemName, { color: textColor }]}>{scan.name}</ThemedText>
+                  <ThemedText style={[styles.scanItemStatus, { color: successColor }]}>{scan.status}</ThemedText>
+                </View>
+                <View style={styles.scanItemDetails}>
+                  <ThemedText style={[styles.scanItemBarcode, { color: textSecondaryColor }]}>Barcode: {scan.barcode}</ThemedText>
+                  <ThemedText style={[styles.scanItemTime, { color: textTertiaryColor }]}>{scan.timestamp}</ThemedText>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={styles.emptyState}>
+            <MaterialIcons name="inventory" size={48} color={textTertiaryColor} />
+            <ThemedText style={[styles.emptyText, { color: textTertiaryColor }]}>No items scanned yet</ThemedText>
+          </View>
+        )}
+      </Card>
+      
+      {/* Manual Entry Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isManualEntryVisible}
+        onRequestClose={() => setIsManualEntryVisible(false)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+          <View style={[styles.modalContent, { backgroundColor: cardBackgroundColor }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: borderColor }]}>
+              <ThemedText type="title" style={[styles.modalTitle, { color: textColor }]}>Manual Barcode Entry</ThemedText>
+              <TouchableOpacity onPress={() => setIsManualEntryVisible(false)}>
+                <MaterialIcons name="close" size={24} color={textTertiaryColor} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.formGroup}>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Enter Barcode</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                value={manualBarcode}
+                onChangeText={setManualBarcode}
+                placeholder="Enter barcode number"
+                placeholderTextColor={textTertiaryColor}
+                keyboardType="numeric"
+                autoFocus
+              />
+            </View>
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={[styles.cancelButton, { backgroundColor: borderColor }]} 
+                onPress={() => setIsManualEntryVisible(false)}
+              >
+                <ThemedText style={[styles.cancelButtonText, { color: textSecondaryColor }]}>Cancel</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.submitButton, { backgroundColor: primaryColor }]} 
+                onPress={handleManualEntrySubmit}
+              >
+                <ThemedText style={[styles.submitButtonText, { color: '#ffffff' }]}>Submit</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      
+      {/* Action Selection Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isActionModalVisible}
+        onRequestClose={() => setIsActionModalVisible(false)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+          <View style={[styles.modalContent, { backgroundColor: cardBackgroundColor }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: borderColor }]}>
+              <ThemedText type="title" style={[styles.modalTitle, { color: textColor }]}>Select Action</ThemedText>
+              <TouchableOpacity onPress={() => setIsActionModalVisible(false)}>
+                <MaterialIcons name="close" size={24} color={textTertiaryColor} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.formGroup}>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Scanned Barcode</ThemedText>
+              <View style={[styles.barcodeDisplay, { backgroundColor: cardBackgroundColor, borderColor: borderColor }]}>
+                <ThemedText style={[styles.barcodeText, { color: textColor }]}>{scannedBarcode}</ThemedText>
+              </View>
+            </View>
+            
+            <View style={styles.actionButtonsContainer}>
+              <TouchableOpacity 
+                style={[
+                  styles.actionButtonLarge, 
+                  { backgroundColor: actionType === 'add' ? primaryColor : cardBackgroundColor, borderColor: primaryColor }
+                ]} 
+                onPress={() => selectActionType('add')}
+              >
+                <ThemedText style={[
+                  styles.actionButtonText, 
+                  { color: actionType === 'add' ? '#fff' : primaryColor }
+                ]}>Add to Inventory</ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[
+                  styles.actionButtonLarge, 
+                  { backgroundColor: actionType === 'remove' ? dangerColor : cardBackgroundColor, borderColor: dangerColor }
+                ]} 
+                onPress={() => selectActionType('remove')}
+              >
+                <ThemedText style={[
+                  styles.actionButtonText, 
+                  { color: actionType === 'remove' ? '#fff' : dangerColor }
+                ]}>Remove from Inventory</ThemedText>
+              </TouchableOpacity>
+            </View>
+            
+            {actionType === 'add' ? (
+              <>
+                <View style={styles.formGroup}>
+                  <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Item Name</ThemedText>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                    value={itemName}
+                    onChangeText={setItemName}
+                    placeholder="Enter item name"
+                    placeholderTextColor={textTertiaryColor}
+                  />
+                </View>
+                
+                <ThemedText style={[styles.infoText, { color: textSecondaryColor }]}>
+                  Add this item to your inventory
+                </ThemedText>
+                
+                <View style={styles.modalActions}>
+                  <TouchableOpacity 
+                    style={[styles.cancelButton, { backgroundColor: borderColor }]} 
+                    onPress={() => setIsActionModalVisible(false)}
+                  >
+                    <ThemedText style={[styles.cancelButtonText, { color: textSecondaryColor }]}>Cancel</ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.submitButton, { backgroundColor: primaryColor }]} 
+                    onPress={handleAddToInventory}
+                  >
+                    <ThemedText style={[styles.submitButtonText, { color: '#ffffff' }]}>Add to Inventory</ThemedText>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.formGroup}>
+                  <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Quantity to Remove</ThemedText>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                    value={quantityToRemove}
+                    onChangeText={setQuantityToRemove}
+                    placeholder="Enter quantity"
+                    placeholderTextColor={textTertiaryColor}
+                    keyboardType="numeric"
+                    autoFocus
+                  />
+                </View>
+                
+                <ThemedText style={[styles.infoText, { color: textSecondaryColor }]}>
+                  Remove items from your inventory
+                </ThemedText>
+                
+                <View style={styles.modalActions}>
+                  <TouchableOpacity 
+                    style={[styles.cancelButton, { backgroundColor: borderColor }]} 
+                    onPress={() => setIsActionModalVisible(false)}
+                  >
+                    <ThemedText style={[styles.cancelButtonText, { color: textSecondaryColor }]}>Cancel</ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.submitButton, { backgroundColor: dangerColor }]} 
+                    onPress={handleRemoveFromInventory}
+                  >
+                    <ThemedText style={[styles.submitButtonText, { color: '#ffffff' }]}>Remove from Inventory</ThemedText>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
+          </View>
+        </View>
+      </Modal>
+    </ThemedView>
+  );
+}
+
+// Helper function to convert hex to rgb
+function hexToRgb(hex: string) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : { r: 0, g: 0, b: 0 };
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    gap: 16,
+  },
+  title: {
+    marginBottom: 8,
+  },
+  cameraHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  closeButton: {
+    marginRight: 16,
+  },
+  cameraTitle: {
+    flex: 1,
+  },
+  cameraView: {
+    flex: 1,
+  },
+  cameraOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scanFrame: {
+    opacity: 0.5,
+  },
+  cameraInstruction: {
+    marginTop: 32,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  sectionTitle: {
+  },
+  scannerCard: {
+    borderRadius: 8,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  scannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  scannerPlaceholder: {
+    height: 280,
+    borderRadius: 8,
+    borderStyle: 'dashed',
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  placeholderText: {
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  scannerActions: {
+    flexDirection: 'column',
+    gap: 12,
+    marginTop: 16,
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    gap: 12,
+  },
+  primaryButtonText: {
+    fontWeight: '700',
+    fontSize: 18,
+  },
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 5,
+    borderWidth: 1,
+    gap: 8,
+  },
+  secondaryButtonText: {
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  resultsCard: {
+    borderRadius: 8,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  resultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  countText: {
+  },
+  scansList: {
+    maxHeight: 300,
+  },
+  scanItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  scanItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  scanItemName: {
+    fontWeight: '600',
+  },
+  scanItemStatus: {
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  scanItemDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  scanItemBarcode: {
+    fontSize: 14,
+  },
+  scanItemTime: {
+    fontSize: 12,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+    gap: 16,
+  },
+  emptyText: {
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalContent: {
+    borderRadius: 10,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  formGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 5,
+    padding: 12,
+    fontSize: 16,
+  },
+  barcodeDisplay: {
+    borderWidth: 1,
+    borderRadius: 5,
+    padding: 12,
+    fontSize: 16,
+  },
+  barcodeText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  infoText: {
+    textAlign: 'center',
+    marginBottom: 20,
+    fontSize: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 10,
+  },
+  cancelButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  cancelButtonText: {
+    fontWeight: '600',
+  },
+  submitButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  submitButtonText: {
+    fontWeight: '600',
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 20,
+  },
+  actionButtonLarge: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  actionButtonText: {
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  
+});

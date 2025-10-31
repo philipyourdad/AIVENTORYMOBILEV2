@@ -1,0 +1,430 @@
+import { StyleSheet, View, FlatList, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Card } from '@/components/ui/card';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useState } from 'react';
+import { useThemeColor } from '@/hooks/use-theme-color';
+
+const SUPPLIERS = [
+  { id: '1', name: 'Motormate CDO', contact: 'Philip Jomer Matias', email: 'philip@gmail.com', phone: '+63 912 345 6789', rating: 4.8 },
+  { id: '2', name: 'King Motors Osmena', contact: 'Darren Louis Uyanger', email: 'darren@gmail.com', phone: '+63 923 456 7890', rating: 4.5 },
+  { id: '3', name: 'Motoworks', contact: 'Maelyn Obejer', email: 'maelyn@gmail.com', phone: '+63 934 567 8901', rating: 4.9 },
+  { id: '4', name: 'Secret Garage', contact: 'Angel Llatunatzy', email: 'angel@gmail.com', phone: '+63 945 678 9012', rating: 4.2 },
+  { id: '5', name: 'AJS Motorparts', contact: 'Roque Minarcos', email: 'roque@gmail.com', phone: '+63 956 789 0123', rating: 4.6 },
+];
+
+export default function SuppliersScreen() {
+  const [suppliers, setSuppliers] = useState(SUPPLIERS);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    contact: '',
+    email: '',
+    phone: '',
+    rating: ''
+  });
+
+  // Theme colors
+  const backgroundColor = useThemeColor({}, 'background');
+  const cardBackgroundColor = useThemeColor({}, 'cardBackground');
+  const borderColor = useThemeColor({}, 'border');
+  const textColor = useThemeColor({}, 'text');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
+  const textTertiaryColor = useThemeColor({}, 'textTertiary');
+  const primaryColor = useThemeColor({}, 'primary');
+  const successColor = useThemeColor({}, 'success');
+  const dangerColor = useThemeColor({}, 'danger');
+  const warningColor = useThemeColor({}, 'warning');
+
+  const renderRating = (rating: number) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<MaterialIcons key={`full-${i}`} name="star" size={16} color="#FFD700" />);
+    }
+    
+    if (hasHalfStar) {
+      stars.push(<MaterialIcons key="half" name="star-half" size={16} color="#FFD700" />);
+    }
+    
+    const emptyStars = 5 - Math.ceil(rating);
+    for (let i = 0; i < emptyStars; i++) {
+      stars.push(<MaterialIcons key={`empty-${i}`} name="star-border" size={16} color="#FFD700" />);
+    }
+    
+    return <View style={styles.ratingContainer}>{stars}</View>;
+  };
+
+  const openEditModal = (supplier) => {
+    setSelectedSupplier(supplier);
+    setEditForm({
+      name: supplier.name,
+      contact: supplier.contact,
+      email: supplier.email,
+      phone: supplier.phone,
+      rating: supplier.rating.toString()
+    });
+    setIsEditModalVisible(true);
+  };
+
+  const closeEditModal = () => {
+    setIsEditModalVisible(false);
+    setSelectedSupplier(null);
+  };
+
+  const handleEditSave = () => {
+    if (!editForm.name || !editForm.contact || !editForm.email || !editForm.phone || !editForm.rating) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    // Validate Philippine phone number format (+63 followed by 9 digits)
+    const phoneRegex = /^\+63\s\d{3}\s\d{3}\s\d{4}$/;
+    if (!phoneRegex.test(editForm.phone)) {
+      Alert.alert('Error', 'Please enter a valid Philippine phone number in the format: +63 9XX XXX XXXX');
+      return;
+    }
+
+    // Validate Philippine email format (should end with .ph or .com.ph)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.(ph|com\.ph)$/;
+    if (!emailRegex.test(editForm.email)) {
+      Alert.alert('Error', 'Please enter a valid Philippine email address (ending with .ph or .com.ph)');
+      return;
+    }
+
+    const updatedRating = parseFloat(editForm.rating);
+    if (isNaN(updatedRating) || updatedRating < 0 || updatedRating > 5) {
+      Alert.alert('Error', 'Please enter a valid rating between 0 and 5');
+      return;
+    }
+
+    setSuppliers(suppliers.map(supplier => 
+      supplier.id === selectedSupplier.id 
+        ? { 
+            ...supplier, 
+            name: editForm.name,
+            contact: editForm.contact,
+            email: editForm.email,
+            phone: editForm.phone,
+            rating: updatedRating
+          } 
+        : supplier
+    ));
+    
+    closeEditModal();
+  };
+
+  const handleDelete = (supplier) => {
+    Alert.alert(
+      'Delete Supplier',
+      `Are you sure you want to delete "${supplier.name}"?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setSuppliers(suppliers.filter(s => s.id !== supplier.id));
+          }
+        }
+      ]
+    );
+  };
+
+  return (
+    <ThemedView style={[styles.container, { backgroundColor: backgroundColor }]}>
+      <ThemedText type="title" style={[styles.title, { color: textColor }]}>Suppliers</ThemedText>
+      
+      <FlatList
+        data={suppliers}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ gap: 12 }}
+        renderItem={({ item }) => (
+          <Card style={[styles.card, { backgroundColor: cardBackgroundColor }]}>
+            <View style={styles.header}>
+              <ThemedText type="defaultSemiBold" style={[styles.name, { color: textColor }]}>{item.name}</ThemedText>
+              <View style={styles.rating}>
+                {renderRating(item.rating)}
+                <ThemedText style={[styles.ratingText, { color: textSecondaryColor }]}>{item.rating}</ThemedText>
+              </View>
+            </View>
+            
+            <View style={styles.contactInfo}>
+              <View style={styles.infoRow}>
+                <MaterialIcons name="person" size={16} color={textTertiaryColor} />
+                <ThemedText style={[styles.infoText, { color: textSecondaryColor }]}>{item.contact}</ThemedText>
+              </View>
+              
+              <View style={styles.infoRow}>
+                <MaterialIcons name="email" size={16} color={textTertiaryColor} />
+                <ThemedText style={[styles.infoText, { color: textSecondaryColor }]}>{item.email}</ThemedText>
+              </View>
+              
+              <View style={styles.infoRow}>
+                <MaterialIcons name="phone" size={16} color={textTertiaryColor} />
+                <ThemedText style={[styles.infoText, { color: textSecondaryColor }]}>{item.phone}</ThemedText>
+              </View>
+            </View>
+            
+            <View style={[styles.actions, { borderTopColor: borderColor }]}>
+              <TouchableOpacity style={[styles.actionButton, { backgroundColor: cardBackgroundColor }]} onPress={() => openEditModal(item)}>
+                <MaterialIcons name="edit" size={16} color={primaryColor} />
+                <ThemedText style={[styles.actionText, { color: primaryColor }]}>Edit</ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={[styles.actionButton, { backgroundColor: cardBackgroundColor }]} onPress={() => handleDelete(item)}>
+                <MaterialIcons name="delete" size={16} color={dangerColor} />
+                <ThemedText style={[styles.actionText, { color: dangerColor }]}>Delete</ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={[styles.actionButton, { backgroundColor: cardBackgroundColor }]}>
+                <MaterialIcons name="phone" size={16} color={successColor} />
+                <ThemedText style={[styles.actionText, { color: successColor }]}>Call</ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={[styles.actionButton, { backgroundColor: cardBackgroundColor }]}>
+                <MaterialIcons name="email" size={16} color={primaryColor} />
+                <ThemedText style={[styles.actionText, { color: primaryColor }]}>Email</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </Card>
+        )}
+      />
+      
+      {/* Edit Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isEditModalVisible}
+        onRequestClose={closeEditModal}>
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+          <View style={[styles.modalContent, { backgroundColor: cardBackgroundColor }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: borderColor }]}>
+              <ThemedText type="title" style={[styles.modalTitle, { color: textColor }]}>Edit Supplier</ThemedText>
+              <TouchableOpacity onPress={closeEditModal}>
+                <MaterialIcons name="close" size={24} color={textTertiaryColor} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.formGroup}>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Supplier Name</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                value={editForm.name}
+                onChangeText={(text) => setEditForm({...editForm, name: text})}
+                placeholder="Enter supplier name"
+                placeholderTextColor={textTertiaryColor}
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Contact Person</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                value={editForm.contact}
+                onChangeText={(text) => setEditForm({...editForm, contact: text})}
+                placeholder="Enter contact person"
+                placeholderTextColor={textTertiaryColor}
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Email</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                value={editForm.email}
+                onChangeText={(text) => setEditForm({...editForm, email: text})}
+                placeholder="Enter email address"
+                placeholderTextColor={textTertiaryColor}
+                keyboardType="email-address"
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Phone</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                value={editForm.phone}
+                onChangeText={(text) => setEditForm({...editForm, phone: text})}
+                placeholder="+63 9XX XXX XXXX"
+                placeholderTextColor={textTertiaryColor}
+                keyboardType="phone-pad"
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Rating (0-5)</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                value={editForm.rating}
+                onChangeText={(text) => setEditForm({...editForm, rating: text})}
+                placeholder="Enter rating"
+                placeholderTextColor={textTertiaryColor}
+                keyboardType="numeric"
+              />
+            </View>
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={[styles.cancelButton, { backgroundColor: borderColor }]} 
+                onPress={closeEditModal}
+              >
+                <ThemedText style={[styles.cancelButtonText, { color: textSecondaryColor }]}>Cancel</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.saveButton, { backgroundColor: primaryColor }]} 
+                onPress={handleEditSave}
+              >
+                <ThemedText style={[styles.saveButtonText, { color: '#ffffff' }]}>Save</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </ThemedView>
+  );
+}
+
+// Helper function to convert hex to rgb
+function hexToRgb(hex: string) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : { r: 0, g: 0, b: 0 };
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    gap: 16,
+  },
+  title: {
+    marginBottom: 8,
+  },
+  card: {
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  name: {
+  },
+  rating: { 
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingText: {
+    fontWeight: '600',
+  },
+  contactInfo: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoText: {
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    paddingTop: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 5,
+  },
+  actionText: {
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalContent: {
+    borderRadius: 10,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 5,
+    padding: 12,
+    fontSize: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 10,
+  },
+  cancelButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  cancelButtonText: {
+    fontWeight: '600',
+  },
+  saveButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  saveButtonText: {
+    fontWeight: '600',
+  },
+});
