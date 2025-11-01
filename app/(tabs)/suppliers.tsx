@@ -1,4 +1,4 @@
-import { StyleSheet, View, FlatList, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
+import { StyleSheet, View, FlatList, TouchableOpacity, Modal, TextInput, Alert, RefreshControl } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Card } from '@/components/ui/card';
@@ -16,6 +16,7 @@ const SUPPLIERS = [
 
 export default function SuppliersScreen() {
   const [suppliers, setSuppliers] = useState(SUPPLIERS);
+  const [filteredSuppliers, setFilteredSuppliers] = useState(SUPPLIERS);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -25,6 +26,8 @@ export default function SuppliersScreen() {
     phone: '',
     rating: ''
   });
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Theme colors
   const backgroundColor = useThemeColor({}, 'background');
@@ -37,6 +40,31 @@ export default function SuppliersScreen() {
   const successColor = useThemeColor({}, 'success');
   const dangerColor = useThemeColor({}, 'danger');
   const warningColor = useThemeColor({}, 'warning');
+
+  // Filter suppliers based on search query
+  useState(() => {
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const filtered = suppliers.filter(supplier => 
+        supplier.name.toLowerCase().includes(query) || 
+        supplier.contact.toLowerCase().includes(query) ||
+        supplier.email.toLowerCase().includes(query) ||
+        supplier.phone.includes(query)
+      );
+      setFilteredSuppliers(filtered);
+    } else {
+      setFilteredSuppliers(suppliers);
+    }
+  }, [searchQuery, suppliers]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    // Simulate a network request
+    setTimeout(() => {
+      // In a real app, you would fetch new data here
+      setRefreshing(false);
+    }, 1000);
+  };
 
   const renderRating = (rating: number) => {
     const stars = [];
@@ -132,6 +160,7 @@ export default function SuppliersScreen() {
           style: 'destructive',
           onPress: () => {
             setSuppliers(suppliers.filter(s => s.id !== supplier.id));
+            setFilteredSuppliers(filteredSuppliers.filter(s => s.id !== supplier.id));
           }
         }
       ]
@@ -142,10 +171,36 @@ export default function SuppliersScreen() {
     <ThemedView style={[styles.container, { backgroundColor: backgroundColor }]}>
       <ThemedText type="title" style={[styles.title, { color: textColor }]}>Suppliers</ThemedText>
       
+      {/* Search Bar */}
+      <View style={[styles.searchContainer, { backgroundColor: cardBackgroundColor, borderColor: borderColor }]}>
+        <View style={styles.searchInputContainer}>
+          <MaterialIcons name="search" size={20} color={textTertiaryColor} />
+          <TextInput
+            style={[styles.searchInput, { color: textColor }]}
+            placeholder="Search suppliers..."
+            placeholderTextColor={textTertiaryColor}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery ? (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <MaterialIcons name="close" size={20} color={textTertiaryColor} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </View>
+      
+      {/* Results count */}
+      <ThemedText style={[styles.resultsCount, { color: textSecondaryColor }]}>
+        Showing {filteredSuppliers.length} of {suppliers.length} suppliers
+      </ThemedText>
+      
       <FlatList
-        data={suppliers}
+        data={filteredSuppliers}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ gap: 12 }}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         renderItem={({ item }) => (
           <Card style={[styles.card, { backgroundColor: cardBackgroundColor }]}>
             <View style={styles.header}>
@@ -311,13 +366,40 @@ const styles = StyleSheet.create({
   title: {
     marginBottom: 8,
   },
-  card: {
-    borderRadius: 8,
+  searchContainer: {
+    borderRadius: 12,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
+    marginBottom: 16,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
+  },
+  resultsCount: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  card: {
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation:2,
   },
   header: {
     flexDirection: 'row',
@@ -326,6 +408,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   name: {
+    flex: 1,
+    marginRight: 12,
   },
   rating: { 
     flexDirection: 'row',
@@ -362,7 +446,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 5,
+    borderRadius: 8,
   },
   actionText: {
     fontWeight: '600',

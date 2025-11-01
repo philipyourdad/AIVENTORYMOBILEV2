@@ -49,11 +49,7 @@ export default function ScanScreen() {
     setScanned(true);
     setIsCameraActive(false);
     
-    // Set the scanned barcode and show the action modal
-    setScannedBarcode(data);
-    setItemName(`Product ${data}`); // Default name based on barcode
-    
-    // Add to recent scans
+    // Just add to recent scans and close camera
     const newScan = {
       id: Date.now().toString(),
       barcode: data,
@@ -63,9 +59,6 @@ export default function ScanScreen() {
     };
     
     setRecentScans(prevScans => [newScan, ...prevScans]);
-    
-    // Show action modal
-    setIsActionModalVisible(true);
   };
 
   const handleAddToInventory = () => {
@@ -87,30 +80,6 @@ export default function ScanScreen() {
     // Close the modal
     setIsActionModalVisible(false);
     setItemName(''); // Reset item name
-    setScannedBarcode(''); // Reset scanned barcode
-  };
-
-  const handleRemoveFromInventory = () => {
-    const quantity = parseInt(quantityToRemove);
-    
-    if (isNaN(quantity) || quantity <= 0) {
-      Alert.alert('Error', 'Please enter a valid quantity');
-      return;
-    }
-    
-    // Navigate to inventory screen with the scanned barcode and quantity to remove
-    router.push({
-      pathname: '/inventory',
-      params: { 
-        scannedBarcode: scannedBarcode,
-        quantityToRemove: quantity.toString(),
-        action: 'remove'
-      }
-    });
-    
-    // Close the modal
-    setIsActionModalVisible(false);
-    setQuantityToRemove('1'); // Reset quantity
     setScannedBarcode(''); // Reset scanned barcode
   };
 
@@ -195,63 +164,72 @@ export default function ScanScreen() {
 
   return (
     <ThemedView style={[styles.container, { backgroundColor: backgroundColor }]}>
-      <ThemedText type="title" style={[styles.title, { color: textColor }]}>Barcode Scanner</ThemedText>
-      
-      <Card style={[styles.scannerCard, { backgroundColor: cardBackgroundColor }]}>
-        <View style={styles.scannerHeader}>
-          <MaterialIcons name="qr-code-scanner" size={24} color={primaryColor} />
-          <ThemedText type="subtitle" style={[styles.sectionTitle, { color: textColor }]}>Scan Items</ThemedText>
-        </View>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <ThemedText type="title" style={[styles.title, { color: textColor }]}>Barcode Scanner</ThemedText>
         
-        <View style={[styles.scannerPlaceholder, { borderColor: borderColor }]}>
-          <MaterialIcons name="qr-code" size={64} color={textTertiaryColor} />
-          <ThemedText style={[styles.placeholderText, { color: textTertiaryColor }]}>Point camera at barcode to scan</ThemedText>
-        </View>
-        
-        <View style={styles.scannerActions}>
-          <TouchableOpacity style={[styles.primaryButton, { backgroundColor: primaryColor }]} onPress={handleCameraScan}>
-            <MaterialIcons name="camera" size={24} color="#fff" />
-            <ThemedText style={[styles.primaryButtonText, { color: '#ffffff' }]}>Camera Scan</ThemedText>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.secondaryButton, { backgroundColor: cardBackgroundColor, borderColor: primaryColor }]}
-            onPress={() => setIsManualEntryVisible(true)}
-          >
-            <MaterialIcons name="keyboard" size={20} color={primaryColor} />
-            <ThemedText style={[styles.secondaryButtonText, { color: primaryColor }]}>Manual Entry</ThemedText>
-          </TouchableOpacity>
-        </View>
-      </Card>
-      
-      <Card style={[styles.resultsCard, { backgroundColor: cardBackgroundColor }]}>
-        <View style={styles.resultsHeader}>
-          <ThemedText type="subtitle" style={[styles.sectionTitle, { color: textColor }]}>Recent Scans</ThemedText>
-          <ThemedText style={[styles.countText, { color: textTertiaryColor }]}>{recentScans.length} items</ThemedText>
-        </View>
-        
-        {recentScans.length > 0 ? (
-          <ScrollView style={styles.scansList}>
-            {recentScans.map((scan) => (
-              <View key={scan.id} style={[styles.scanItem, { borderBottomColor: borderColor }]}>
-                <View style={styles.scanItemHeader}>
-                  <ThemedText style={[styles.scanItemName, { color: textColor }]}>{scan.name}</ThemedText>
-                  <ThemedText style={[styles.scanItemStatus, { color: successColor }]}>{scan.status}</ThemedText>
-                </View>
-                <View style={styles.scanItemDetails}>
-                  <ThemedText style={[styles.scanItemBarcode, { color: textSecondaryColor }]}>Barcode: {scan.barcode}</ThemedText>
-                  <ThemedText style={[styles.scanItemTime, { color: textTertiaryColor }]}>{scan.timestamp}</ThemedText>
-                </View>
-              </View>
-            ))}
-          </ScrollView>
-        ) : (
-          <View style={styles.emptyState}>
-            <MaterialIcons name="inventory" size={48} color={textTertiaryColor} />
-            <ThemedText style={[styles.emptyText, { color: textTertiaryColor }]}>No items scanned yet</ThemedText>
+        <Card style={[styles.scannerCard, { backgroundColor: cardBackgroundColor }]}>
+          <View style={styles.scannerHeader}>
+            <MaterialIcons name="qr-code-scanner" size={24} color={primaryColor} />
+            <ThemedText type="subtitle" style={[styles.sectionTitle, { color: textColor }]}>Scan Items</ThemedText>
           </View>
-        )}
-      </Card>
+          
+          <View style={[styles.scannerPlaceholder, { borderColor: borderColor }]}>
+            <MaterialIcons name="qr-code" size={64} color={primaryColor} />
+            <ThemedText style={[styles.placeholderText, { color: textSecondaryColor }]}>Point camera at barcode to scan</ThemedText>
+            <ThemedText style={[styles.placeholderSubText, { color: textTertiaryColor }]}>Supports EAN-8, EAN-13, Code 39, and Code 128</ThemedText>
+          </View>
+          
+          <View style={styles.scannerActions}>
+            <TouchableOpacity style={[styles.primaryButton, { backgroundColor: primaryColor }]} onPress={handleCameraScan}>
+              <MaterialIcons name="camera" size={24} color="#fff" />
+              <ThemedText style={[styles.primaryButtonText, { color: '#ffffff' }]}>Scan with Camera</ThemedText>
+            </TouchableOpacity>
+            
+            <View style={styles.buttonSeparator}>
+              <View style={[styles.separatorLine, { backgroundColor: borderColor }]} />
+              <ThemedText style={[styles.separatorText, { color: textTertiaryColor }]}>OR</ThemedText>
+              <View style={[styles.separatorLine, { backgroundColor: borderColor }]} />
+            </View>
+            
+            <TouchableOpacity 
+              style={[styles.secondaryButton, { backgroundColor: cardBackgroundColor, borderColor: primaryColor }]}
+              onPress={() => setIsManualEntryVisible(true)}
+            >
+              <MaterialIcons name="keyboard" size={20} color={primaryColor} />
+              <ThemedText style={[styles.secondaryButtonText, { color: primaryColor }]}>Enter Barcode Manually</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </Card>
+        
+        <Card style={[styles.resultsCard, { backgroundColor: cardBackgroundColor }]}>
+          <View style={styles.resultsHeader}>
+            <ThemedText type="subtitle" style={[styles.sectionTitle, { color: textColor }]}>Recent Scans</ThemedText>
+            <ThemedText style={[styles.countText, { color: textTertiaryColor }]}>{recentScans.length} items</ThemedText>
+          </View>
+          
+          {recentScans.length > 0 ? (
+            <ScrollView style={styles.scansList} nestedScrollEnabled={true}>
+              {recentScans.map((scan) => (
+                <View key={scan.id} style={[styles.scanItem, { borderBottomColor: borderColor }]}>
+                  <View style={styles.scanItemHeader}>
+                    <ThemedText style={[styles.scanItemName, { color: textColor }]}>{scan.name}</ThemedText>
+                    <ThemedText style={[styles.scanItemStatus, { color: successColor }]}>{scan.status}</ThemedText>
+                  </View>
+                  <View style={styles.scanItemDetails}>
+                    <ThemedText style={[styles.scanItemBarcode, { color: textSecondaryColor }]}>Barcode: {scan.barcode}</ThemedText>
+                    <ThemedText style={[styles.scanItemTime, { color: textTertiaryColor }]}>{scan.timestamp}</ThemedText>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyState}>
+              <MaterialIcons name="inventory" size={48} color={textTertiaryColor} />
+              <ThemedText style={[styles.emptyText, { color: textTertiaryColor }]}>No items scanned yet</ThemedText>
+            </View>
+          )}
+        </Card>
+      </ScrollView>
       
       {/* Manual Entry Modal */}
       <Modal
@@ -323,101 +301,40 @@ export default function ScanScreen() {
               </View>
             </View>
             
-            <View style={styles.actionButtonsContainer}>
-              <TouchableOpacity 
-                style={[
-                  styles.actionButtonLarge, 
-                  { backgroundColor: actionType === 'add' ? primaryColor : cardBackgroundColor, borderColor: primaryColor }
-                ]} 
-                onPress={() => selectActionType('add')}
-              >
-                <ThemedText style={[
-                  styles.actionButtonText, 
-                  { color: actionType === 'add' ? '#fff' : primaryColor }
-                ]}>Add to Inventory</ThemedText>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[
-                  styles.actionButtonLarge, 
-                  { backgroundColor: actionType === 'remove' ? dangerColor : cardBackgroundColor, borderColor: dangerColor }
-                ]} 
-                onPress={() => selectActionType('remove')}
-              >
-                <ThemedText style={[
-                  styles.actionButtonText, 
-                  { color: actionType === 'remove' ? '#fff' : dangerColor }
-                ]}>Remove from Inventory</ThemedText>
-              </TouchableOpacity>
-            </View>
+           
             
-            {actionType === 'add' ? (
-              <>
-                <View style={styles.formGroup}>
-                  <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Item Name</ThemedText>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
-                    value={itemName}
-                    onChangeText={setItemName}
-                    placeholder="Enter item name"
-                    placeholderTextColor={textTertiaryColor}
-                  />
-                </View>
-                
-                <ThemedText style={[styles.infoText, { color: textSecondaryColor }]}>
-                  Add this item to your inventory
-                </ThemedText>
-                
-                <View style={styles.modalActions}>
-                  <TouchableOpacity 
-                    style={[styles.cancelButton, { backgroundColor: borderColor }]} 
-                    onPress={() => setIsActionModalVisible(false)}
-                  >
-                    <ThemedText style={[styles.cancelButtonText, { color: textSecondaryColor }]}>Cancel</ThemedText>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.submitButton, { backgroundColor: primaryColor }]} 
-                    onPress={handleAddToInventory}
-                  >
-                    <ThemedText style={[styles.submitButtonText, { color: '#ffffff' }]}>Add to Inventory</ThemedText>
-                  </TouchableOpacity>
-                </View>
-              </>
-            ) : (
-              <>
-                <View style={styles.formGroup}>
-                  <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Quantity to Remove</ThemedText>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
-                    value={quantityToRemove}
-                    onChangeText={setQuantityToRemove}
-                    placeholder="Enter quantity"
-                    placeholderTextColor={textTertiaryColor}
-                    keyboardType="numeric"
-                    autoFocus
-                  />
-                </View>
-                
-                <ThemedText style={[styles.infoText, { color: textSecondaryColor }]}>
-                  Remove items from your inventory
-                </ThemedText>
-                
-                <View style={styles.modalActions}>
-                  <TouchableOpacity 
-                    style={[styles.cancelButton, { backgroundColor: borderColor }]} 
-                    onPress={() => setIsActionModalVisible(false)}
-                  >
-                    <ThemedText style={[styles.cancelButtonText, { color: textSecondaryColor }]}>Cancel</ThemedText>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.submitButton, { backgroundColor: dangerColor }]} 
-                    onPress={handleRemoveFromInventory}
-                  >
-                    <ThemedText style={[styles.submitButtonText, { color: '#ffffff' }]}>Remove from Inventory</ThemedText>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
+            <>
+              <View style={styles.formGroup}>
+                <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Item Name</ThemedText>
+                <TextInput
+                  style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                  value={itemName}
+                  onChangeText={setItemName}
+                  placeholder="Enter item name"
+                  placeholderTextColor={textTertiaryColor}
+                />
+              </View>
+              
+              
+              <ThemedText style={[styles.infoText, { color: textSecondaryColor }]}>
+                Add this item to your inventory
+              </ThemedText>
+              
+              <View style={styles.modalActions}>
+                <TouchableOpacity 
+                  style={[styles.cancelButton, { backgroundColor: borderColor }]} 
+                  onPress={() => setIsActionModalVisible(false)}
+                >
+                  <ThemedText style={[styles.cancelButtonText, { color: textSecondaryColor }]}>Cancel</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.submitButton, { backgroundColor: primaryColor }]} 
+                  onPress={handleAddToInventory}
+                >
+                  <ThemedText style={[styles.submitButtonText, { color: '#ffffff' }]}>Add to Inventory</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </>
 
           </View>
         </View>
@@ -442,6 +359,12 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
   title: {
     marginBottom: 8,
   },
@@ -456,6 +379,10 @@ const styles = StyleSheet.create({
   },
   cameraTitle: {
     flex: 1,
+    textAlign: 'center',
+  },
+  flashButton: {
+    marginLeft: 16,
   },
   cameraView: {
     flex: 1,
@@ -472,6 +399,17 @@ const styles = StyleSheet.create({
     marginTop: 32,
     fontSize: 16,
     textAlign: 'center',
+  },
+  flashIndicator: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: 8,
+    borderRadius: 20,
+    gap: 5,
   },
   sectionTitle: {
   },
@@ -492,16 +430,22 @@ const styles = StyleSheet.create({
   },
   scannerPlaceholder: {
     height: 280,
-    borderRadius: 8,
+    borderRadius: 12,
     borderStyle: 'dashed',
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 16,
+    padding: 20,
   },
   placeholderText: {
     textAlign: 'center',
-    paddingHorizontal: 24,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  placeholderSubText: {
+    textAlign: 'center',
+    fontSize: 14,
   },
   scannerActions: {
     flexDirection: 'column',
@@ -520,6 +464,20 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontWeight: '700',
     fontSize: 18,
+  },
+  buttonSeparator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginVertical: 8,
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+  },
+  separatorText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   secondaryButton: {
     flexDirection: 'row',
@@ -675,13 +633,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    paddingHorizontal: 10,
+    paddingHorizontal: 20,
     borderRadius: 8,
     borderWidth: 1,
+    gap: 12,
   },
   actionButtonText: {
     fontWeight: '600',
     fontSize: 16,
   },
-  
 });

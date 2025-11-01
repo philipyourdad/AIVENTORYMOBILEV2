@@ -1,10 +1,67 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Card } from '@/components/ui/card';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useThemeColor } from '@/hooks/use-theme-color';
+import { useState } from 'react';
+import { useRouter } from 'expo-router';
 
 export default function DashboardScreen() {
+  const primaryColor = useThemeColor({}, 'primary');
+  const successColor = useThemeColor({}, 'success');
+  const warningColor = useThemeColor({}, 'warning');
+  const dangerColor = useThemeColor({}, 'danger');
+  const backgroundColor = useThemeColor({}, 'background');
+  const cardBackgroundColor = useThemeColor({}, 'cardBackground');
+  const borderColor = useThemeColor({}, 'border');
+  const textColor = useThemeColor({}, 'text');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
+
+  const router = useRouter();
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const inventoryData = [
+    { id: 1, name: 'Wireless Headphones', stock: 5, threshold: 10 },
+    { id: 2, name: 'Smartphone Case', stock: 15, threshold: 20 },
+    { id: 3, name: 'Bluetooth Speaker', stock: 3, threshold: 5 },
+  ];
+
+  const [notifications, setNotifications] = useState([
+    {
+      id: 1,
+      title: "Low Stock Alert",
+      message: "Product 'Wireless Headphones' is below threshold (5 remaining)",
+      time: "2 hours ago",
+      type: "warning"
+    },
+    {
+      id: 2,
+      title: "New Sale",
+      message: "5 units of 'Smartphone Case' sold",
+      time: "5 hours ago",
+      type: "success"
+    }
+  ]);
+
+  const checkLowStockItems = () => {
+    // In a real app, this would check actual inventory data
+    const lowStockItems = inventoryData.filter(item => item.stock <= item.threshold);
+    
+    if (lowStockItems.length > 0) {
+      const newNotification = {
+        id: Date.now(),
+        title: "Low Stock Alert",
+        message: `${lowStockItems.length} item(s) are below threshold`,
+        time: "Just now",
+        type: "warning"
+      };
+      
+      setNotifications(prev => [newNotification, ...prev]);
+    }
+  };
+
   const demandData = [
     { month: 'Jan', stock: 120, demand: 50 },
     { month: 'Feb', stock: 110, demand: 50 },
@@ -16,75 +73,157 @@ export default function DashboardScreen() {
   ];
   const maxValue = Math.max(...demandData.map(d => Math.max(d.stock, d.demand)), 100);
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    // Simulate a network request
+    setTimeout(() => {
+      // In a real app, you would fetch new data here
+      setRefreshing(false);
+    }, 1000);
+  };
+
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={[styles.container, { backgroundColor }]}>
       
-      <ScrollView contentContainerStyle={styles.contentContainer}>
-        <ThemedText type="title" style={{ color: '#000' }}>Dashboard</ThemedText>
+      <ScrollView 
+        contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <View style={styles.header}>
+          <ThemedText type="title" style={[styles.title, { color: textColor }]}>
+            Dashboard
+          </ThemedText>
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={styles.refreshButton}
+              onPress={onRefresh}
+            >
+              <MaterialIcons name="refresh" size={24} color={textColor} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.notificationButton}
+              onPress={() => router.push('/notifications')}
+            >
+              <MaterialIcons name="notifications" size={24} color={textColor} />
+              {notifications.length > 0 && (
+                <View style={styles.notificationBadge}>
+                  <ThemedText style={styles.notificationBadgeText}>
+                    {notifications.length}
+                  </ThemedText>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+        
         {/* Stock Overview Cards */}
         <View style={styles.statsRow}>
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, { backgroundColor: cardBackgroundColor, borderColor }]}>
             <View style={styles.statHeader}>
-              <MaterialIcons name="inventory" size={20} color="#2E3A8C" />
-              <ThemedText type="subtitle" style={{ color: '#2E3A8C' }}>Total Items</ThemedText>
+              <MaterialIcons name="inventory" size={24} color={primaryColor} />
+              <ThemedText type="subtitle" style={[styles.statTitle, { color: textColor }]}>Total Items</ThemedText>
             </View> 
-            <ThemedText style={styles.statValue}>125</ThemedText>
-            <ThemedText style={styles.statDescription}>Motorcycle parts inventory</ThemedText>
-          </Card>
-          <Card style={styles.statCard}>
-            <View style={styles.statHeader}>
-              <MaterialIcons name="warning" size={20} color="#B58900" />
-              <ThemedText type="subtitle" style={{ color: '#2E3A8C' }}>Low-Stock Alerts</ThemedText>
+            <ThemedText style={[styles.statValue, { color: textColor }]}>125</ThemedText>
+            <ThemedText style={[styles.statDescription, { color: textSecondaryColor }]}>Motorcycle parts inventory</ThemedText>
+            <View style={[styles.trendIndicator, { backgroundColor: successColor + '20' }]}>
+              <MaterialIcons name="trending-up" size={16} color={successColor} />
+              <ThemedText style={[styles.trendText, { color: successColor }]}>5% increase</ThemedText>
             </View>
-            <ThemedText style={styles.statValue}>3</ThemedText>
-            <ThemedText style={styles.statDescription}>Items below threshold</ThemedText>
+          </Card>
+          
+          <Card style={[styles.statCard, { backgroundColor: cardBackgroundColor, borderColor }]}>
+            <View style={styles.statHeader}>
+              <MaterialIcons name="warning" size={24} color={warningColor} />
+              <ThemedText type="subtitle" style={[styles.statTitle, { color: textColor }]}>Low-Stock Alerts</ThemedText>
+            </View>
+            <ThemedText style={[styles.statValue, { color: textColor }]}>3</ThemedText>
+            <ThemedText style={[styles.statDescription, { color: textSecondaryColor }]}>Items below threshold</ThemedText>
+            <View style={[styles.trendIndicator, { backgroundColor: warningColor + '20' }]}>
+              <MaterialIcons name="trending-down" size={16} color={warningColor} />
+              <ThemedText style={[styles.trendText, { color: warningColor }]}>2 more than last week</ThemedText>
+            </View>
           </Card>
         </View>
 
         <View style={styles.statsRow}>
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, { backgroundColor: cardBackgroundColor, borderColor }]}>
             <View style={styles.statHeader}>
-              <MaterialIcons name="error" size={20} color="#d32f2f" />
-              <ThemedText type="subtitle" style={{ color: '#2E3A8C' }}>Critical Items</ThemedText>
+              <MaterialIcons name="error" size={24} color={dangerColor} />
+              <ThemedText type="subtitle" style={[styles.statTitle, { color: textColor }]}>Critical Items</ThemedText>
             </View>
-            <ThemedText style={styles.statValue}>1</ThemedText>
-            <ThemedText style={styles.statDescription}>Urgent reorder needed</ThemedText>
+            <ThemedText style={[styles.statValue, { color: textColor }]}>1</ThemedText>
+            <ThemedText style={[styles.statDescription, { color: textSecondaryColor }]}>Urgent reorder needed</ThemedText>
+            <View style={[styles.trendIndicator, { backgroundColor: dangerColor + '20' }]}>
+              <MaterialIcons name="notification-important" size={16} color={dangerColor} />
+              <ThemedText style={[styles.trendText, { color: dangerColor }]}>Immediate action required</ThemedText>
+            </View>
           </Card>
-          <Card style={styles.statCard}>
+          
+          <Card style={[styles.statCard, { backgroundColor: cardBackgroundColor, borderColor }]}>
             <View style={styles.statHeader}>
-              <MaterialIcons name="business" size={20} color="#06D6A0" />
-              <ThemedText type="subtitle" style={{ color: '#2E3A8C' }}>Suppliers</ThemedText>
+              <MaterialIcons name="business" size={24} color={successColor} />
+              <ThemedText type="subtitle" style={[styles.statTitle, { color: textColor }]}>Suppliers</ThemedText>
             </View>
-            <ThemedText style={styles.statValue}>5</ThemedText>
-            <ThemedText style={styles.statDescription}>Active partnerships</ThemedText>
+            <ThemedText style={[styles.statValue, { color: textColor }]}>5</ThemedText>
+            <ThemedText style={[styles.statDescription, { color: textSecondaryColor }]}>Active partnerships</ThemedText>
+            <View style={[styles.trendIndicator, { backgroundColor: successColor + '20' }]}>
+              <MaterialIcons name="group-add" size={16} color={successColor} />
+              <ThemedText style={[styles.trendText, { color: successColor }]}>1 new this month</ThemedText>
+            </View>
           </Card>
         </View>
 
         {/* AI-Powered Alerts */}
         <View style={styles.section}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>AI-Powered Alerts</ThemedText>
-          <View style={styles.alertCardDanger}>
-            <View style={styles.alertBadgeDanger} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <ThemedText style={styles.alertTitleDanger}>Motorcycle Batteries</ThemedText>
-              <ThemedText style={styles.alertMeta}>BAT-YTX-001 · 92% confidence</ThemedText>
-              <ThemedText style={styles.alertMessageDanger}>Predicted to run out in 7 days</ThemedText>
-              <ThemedText style={styles.alertMeta}>Stock: 45 | Threshold: 50</ThemedText>
+          <View style={styles.sectionHeader}>
+            <ThemedText type="subtitle" style={[styles.sectionTitle, { color: textColor }]}>AI-Powered Alerts</ThemedText>
+            <TouchableOpacity>
+              <ThemedText style={[styles.viewAll, { color: primaryColor }]}>View All</ThemedText>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={[styles.alertCardDanger, { backgroundColor: cardBackgroundColor, borderLeftColor: dangerColor }]}>
+            <View style={[styles.alertBadgeDanger, { backgroundColor: dangerColor }]} />
+            <View style={{ flex: 1, gap: 4 }}>
+              <ThemedText style={[styles.alertTitleDanger, { color: dangerColor }]}>Motorcycle Batteries</ThemedText>
+              <ThemedText style={[styles.alertMeta, { color: textSecondaryColor }]}>BAT-YTX-001 · 92% confidence</ThemedText>
+              <ThemedText style={[styles.alertMessageDanger, { color: dangerColor }]}>Predicted to run out in 7 days</ThemedText>
+              <View style={styles.alertStats}>
+                <View style={styles.statItem}>
+                  <MaterialIcons name="inventory" size={16} color={textSecondaryColor} />
+                  <ThemedText style={[styles.statText, { color: textSecondaryColor }]}>45 units</ThemedText>
+                </View>
+                <View style={styles.statItem}>
+                  <MaterialIcons name="flag" size={16} color={textSecondaryColor} />
+                  <ThemedText style={[styles.statText, { color: textSecondaryColor }]}>50 threshold</ThemedText>
+                </View>
+              </View>
             </View>
-            <TouchableOpacity style={[styles.btn, styles.btnDanger]}>
+            <TouchableOpacity style={[styles.btn, styles.btnDanger, { backgroundColor: dangerColor }]}>
               <ThemedText style={styles.btnTextStrong}>REORDER</ThemedText>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.alertCardWarn}>
-            <View style={styles.alertBadgeWarn} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <ThemedText style={styles.alertTitleWarn}>Engine Oil (10W-40)</ThemedText>
-              <ThemedText style={styles.alertMeta}>OIL-10W40-002 · 85% confidence</ThemedText>
-              <ThemedText style={styles.alertMessageWarn}>Order placed - expected December 22, 2025</ThemedText>
-              <ThemedText style={styles.alertMeta}>Stock: 32 | Threshold: 30</ThemedText>
+          <View style={[styles.alertCardWarn, { backgroundColor: cardBackgroundColor, borderLeftColor: warningColor }]}>
+            <View style={[styles.alertBadgeWarn, { backgroundColor: warningColor }]} />
+            <View style={{ flex: 1, gap: 4 }}>
+              <ThemedText style={[styles.alertTitleWarn, { color: warningColor }]}>Engine Oil (10W-40)</ThemedText>
+              <ThemedText style={[styles.alertMeta, { color: textSecondaryColor }]}>OIL-10W40-002 · 85% confidence</ThemedText>
+              <ThemedText style={[styles.alertMessageWarn, { color: warningColor }]}>Order placed - expected December 22, 2025</ThemedText>
+              <View style={styles.alertStats}>
+                <View style={styles.statItem}>
+                  <MaterialIcons name="inventory" size={16} color={textSecondaryColor} />
+                  <ThemedText style={[styles.statText, { color: textSecondaryColor }]}>32 units</ThemedText>
+                </View>
+                <View style={styles.statItem}>
+                  <MaterialIcons name="flag" size={16} color={textSecondaryColor} />
+                  <ThemedText style={[styles.statText, { color: textSecondaryColor }]}>30 threshold</ThemedText>
+                </View>
+              </View>
             </View>
-            <TouchableOpacity style={[styles.btn, styles.btnWarn]}>
+            <TouchableOpacity style={[styles.btn, styles.btnWarn, { backgroundColor: warningColor }]}>
               <ThemedText style={styles.btnTextStrongDark}>VIEW</ThemedText>
             </TouchableOpacity>
           </View>
@@ -92,18 +231,45 @@ export default function DashboardScreen() {
 
         {/* Demand Forecast */}
         <View style={styles.section}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>Demand Forecast</ThemedText>
-          <Card style={styles.chartCard}>
+          <View style={styles.sectionHeader}>
+            <ThemedText type="subtitle" style={[styles.sectionTitle, { color: textColor }]}>Demand Forecast</ThemedText>
+            <TouchableOpacity>
+              <ThemedText style={[styles.viewAll, { color: primaryColor }]}>View Report</ThemedText>
+            </TouchableOpacity>
+          </View>
+          
+          <Card style={[styles.chartCard, { backgroundColor: cardBackgroundColor, borderColor }]}>
+            <View style={styles.chartHeader}>
+              <ThemedText style={[styles.chartTitle, { color: textColor }]}>Stock vs Demand (Last 7 Months)</ThemedText>
+              <View style={styles.chartActions}>
+                <TouchableOpacity style={[styles.chartActionBtn, { backgroundColor: primaryColor + '20' }]}>
+                  <MaterialIcons name="download" size={16} color={primaryColor} />
+                </TouchableOpacity>
+              </View>
+            </View>
+            
             <View style={styles.chartBox}>
-              {demandData.map((d, idx) => (
-                <View key={idx} style={styles.chartBarWrapper}>
-                  <View style={styles.chartBarsContainer}>
+              <View style={styles.chartLabelsContainer}>
+                {demandData.map((d, idx) => (
+                  <ThemedText 
+                    key={idx} 
+                    style={[styles.chartLabel, { color: textSecondaryColor }]}
+                  >
+                    {d.month}
+                  </ThemedText>
+                ))}
+              </View>
+              <View style={styles.chartBarsContainer}>
+                {demandData.map((d, idx) => (
+                  <View
+                    key={idx}
+                    style={styles.chartBarWrapper}>
                     <View
                       style={[
                         styles.chartBar,
                         {
                           height: `${(d.stock / maxValue) * 100}%`,
-                          backgroundColor: '#2E3A8C',
+                          backgroundColor: primaryColor,
                           marginBottom: 6,
                         },
                       ]}
@@ -118,18 +284,18 @@ export default function DashboardScreen() {
                       ]}
                     />
                   </View>
-                  <ThemedText style={styles.chartLabel}>{d.month}</ThemedText>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
+            
             <View style={styles.chartLegend}>
               <View style={styles.legendItem}>
-                <View style={[styles.legendColorBox, { backgroundColor: '#2E3A8C' }]} />
-                <ThemedText style={styles.legendText}>Current Stock</ThemedText>
+                <View style={[styles.legendColorBox, { backgroundColor: primaryColor }]} />
+                <ThemedText style={[styles.legendText, { color: textColor }]}>Current Stock</ThemedText>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendColorBox, { backgroundColor: '#6c63ff' }]} />
-                <ThemedText style={styles.legendText}>Predicted Demand</ThemedText>
+                <ThemedText style={[styles.legendText, { color: textColor }]}>Predicted Demand</ThemedText>
               </View>
             </View>
           </Card>
@@ -142,12 +308,44 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f2f5',
   },
   contentContainer: {
     padding: 16,
     gap: 16,
     paddingBottom: 24,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  
+  notificationButton: {
+    position: 'relative',
+  },
+  
+  notificationBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#e74c3c',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  notificationBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
   },
   statsRow: {
     flexDirection: 'row',
@@ -155,46 +353,70 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    borderWidth: 1,
   },
   statHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
+    gap: 8,
+    marginBottom: 8,
+  },
+  statTitle: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   statValue: {
     fontSize: 28,
     fontWeight: '800',
-    marginBottom: 2,
-    color: '#1a1a1a',
+    marginVertical: 4,
   },
   statDescription: {
     fontSize: 14,
-    color: '#666666',
+    marginBottom: 12,
+  },
+  trendIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  trendText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   section: {
     gap: 12,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   sectionTitle: {
-    color: '#1a1a1a',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  viewAll: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   alertCardDanger: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 16,
     elevation: 2,
     borderLeftWidth: 4,
-    borderLeftColor: '#d32f2f',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -203,57 +425,67 @@ const styles = StyleSheet.create({
   alertCardWarn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 16,
     elevation: 2,
     borderLeftWidth: 4,
-    borderLeftColor: '#B58900',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
   alertBadgeDanger: {
-    width: 6,
-    alignSelf: 'stretch',
-    backgroundColor: '#d32f2f',
+    width: 8,
+    height: 8,
     borderRadius: 4,
     marginRight: 12,
+    alignSelf: 'flex-start',
+    marginTop: 6,
   },
   alertBadgeWarn: {
-    width: 6,
-    alignSelf: 'stretch',
-    backgroundColor: '#B58900',
+    width: 8,
+    height: 8,
     borderRadius: 4,
     marginRight: 12,
+    alignSelf: 'flex-start',
+    marginTop: 6,
   },
   alertTitleDanger: {
-    color: '#d32f2f',
     fontWeight: '700',
     fontSize: 16,
   },
   alertTitleWarn: {
-    color: '#B58900',
     fontWeight: '700',
     fontSize: 16,
   },
   alertMeta: {
-    color: '#666666',
     fontSize: 12,
   },
   alertMessageDanger: {
-    color: '#d32f2f',
     fontWeight: '700',
+    fontSize: 14,
   },
   alertMessageWarn: {
-    color: '#B58900',
     fontWeight: '700',
+    fontSize: 14,
+  },
+  alertStats: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statText: {
+    fontSize: 12,
   },
   btn: {
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 5,
+    borderRadius: 8,
     marginLeft: 12,
   },
   btnDanger: {
@@ -265,45 +497,72 @@ const styles = StyleSheet.create({
   btnTextStrong: {
     color: '#ffffff',
     fontWeight: '800',
+    fontSize: 12,
   },
   btnTextStrongDark: {
     color: '#333333',
     fontWeight: '800',
+    fontSize: 12,
   },
   chartCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    borderWidth: 1,
   },
-  chartBox: {
+  chartHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  chartActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  chartActionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chartBox: {
     marginBottom: 12,
     paddingVertical: 16,
   },
   chartBarsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     height: 120,
-    flexDirection: 'column-reverse',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
   },
   chartBarWrapper: {
     alignItems: 'center',
     width: 36,
+    flexDirection: 'column-reverse',
+    justifyContent: 'flex-end',
   },
   chartBar: {
     width: 16,
     borderRadius: 4,
   },
+  chartLabelsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
   chartLabel: {
     fontSize: 10,
-    color: '#666666',
-    marginTop: 4,
+    width: 36,
+    textAlign: 'center',
   },
   chartLegend: {
     flexDirection: 'row',
@@ -311,7 +570,6 @@ const styles = StyleSheet.create({
     gap: 24,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: '#eeeeee',
   },
   legendItem: {
     flexDirection: 'row',
@@ -324,7 +582,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   legendText: {
-    color: '#333333',
     fontWeight: '600',
   },
 });
