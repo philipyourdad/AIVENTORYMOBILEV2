@@ -3,7 +3,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Card } from '@/components/ui/card';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 const SUPPLIERS = [
@@ -42,7 +42,7 @@ export default function SuppliersScreen() {
   const warningColor = useThemeColor({}, 'warning');
 
   // Filter suppliers based on search query
-  useState(() => {
+  useEffect(() => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const filtered = suppliers.filter(supplier => 
