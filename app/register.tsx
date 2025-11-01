@@ -35,7 +35,9 @@ export default function RegisterScreen() {
     
     // Simulate registration - in a real app, you would call an API
     console.log('Registration attempt with:', { fullName, email, password, role });
-    router.replace('/(tabs)/index');
+    
+    // Navigate to login screen immediately after successful registration
+    router.replace('/login');
   };
 
   return (
