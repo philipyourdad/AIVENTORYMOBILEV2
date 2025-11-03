@@ -21,6 +21,7 @@ export default function ScanScreen() {
   const [scannedBarcode, setScannedBarcode] = useState('');
   const [isActionModalVisible, setIsActionModalVisible] = useState(false);
   const [itemName, setItemName] = useState('');
+  const [itemCategory, setItemCategory] = useState('');
   const [quantityToRemove, setQuantityToRemove] = useState('1');
   const [actionType, setActionType] = useState('add'); // 'add' or 'remove'
   const cameraRef = useRef(null);
@@ -49,7 +50,15 @@ export default function ScanScreen() {
     setScanned(true);
     setIsCameraActive(false);
     
-    // Just add to recent scans and close camera
+    // Set the scanned barcode and show the action modal
+    setScannedBarcode(data);
+    setItemName(`Product ${data}`); // Default name based on barcode
+    setItemCategory('Scanned Item'); // Default category
+    
+    // Show action modal
+    setIsActionModalVisible(true);
+    
+    // Add to recent scans
     const newScan = {
       id: Date.now().toString(),
       barcode: data,
@@ -67,12 +76,18 @@ export default function ScanScreen() {
       return;
     }
     
+    if (!itemCategory.trim()) {
+      Alert.alert('Error', 'Please enter an item category');
+      return;
+    }
+    
     // Navigate to inventory screen with the scanned barcode and item name
     router.push({
       pathname: '/inventory',
       params: { 
         scannedBarcode: scannedBarcode,
         itemName: itemName,
+        itemCategory: itemCategory,
         action: 'add'
       }
     });
@@ -80,6 +95,7 @@ export default function ScanScreen() {
     // Close the modal
     setIsActionModalVisible(false);
     setItemName(''); // Reset item name
+    setItemCategory(''); // Reset item category
     setScannedBarcode(''); // Reset scanned barcode
   };
 
@@ -104,6 +120,7 @@ export default function ScanScreen() {
     // Set the scanned barcode and show the action modal
     setScannedBarcode(manualBarcode);
     setItemName(`Item ${manualBarcode}`); // Default name based on barcode
+    setItemCategory('Scanned Item'); // Default category
     
     // Show action modal
     setIsActionModalVisible(true);
@@ -301,41 +318,46 @@ export default function ScanScreen() {
               </View>
             </View>
             
-           
+            <View style={styles.formGroup}>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Item Name</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                value={itemName}
+                onChangeText={setItemName}
+                placeholder="Enter item name"
+                placeholderTextColor={textTertiaryColor}
+              />
+            </View>
             
-            <>
-              <View style={styles.formGroup}>
-                <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Item Name</ThemedText>
-                <TextInput
-                  style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
-                  value={itemName}
-                  onChangeText={setItemName}
-                  placeholder="Enter item name"
-                  placeholderTextColor={textTertiaryColor}
-                />
-              </View>
-              
-              
-              <ThemedText style={[styles.infoText, { color: textSecondaryColor }]}>
-                Add this item to your inventory
-              </ThemedText>
-              
-              <View style={styles.modalActions}>
-                <TouchableOpacity 
-                  style={[styles.cancelButton, { backgroundColor: borderColor }]} 
-                  onPress={() => setIsActionModalVisible(false)}
-                >
-                  <ThemedText style={[styles.cancelButtonText, { color: textSecondaryColor }]}>Cancel</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.submitButton, { backgroundColor: primaryColor }]} 
-                  onPress={handleAddToInventory}
-                >
-                  <ThemedText style={[styles.submitButtonText, { color: '#ffffff' }]}>Add to Inventory</ThemedText>
-                </TouchableOpacity>
-              </View>
-            </>
-
+            <View style={styles.formGroup}>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Category</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                value={itemCategory}
+                onChangeText={setItemCategory}
+                placeholder="Enter item category"
+                placeholderTextColor={textTertiaryColor}
+              />
+            </View>
+            
+            <ThemedText style={[styles.infoText, { color: textSecondaryColor }]}>
+              Add this item to your inventory
+            </ThemedText>
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={[styles.cancelButton, { backgroundColor: borderColor }]} 
+                onPress={() => setIsActionModalVisible(false)}
+              >
+                <ThemedText style={[styles.cancelButtonText, { color: textSecondaryColor }]}>Cancel</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.submitButton, { backgroundColor: primaryColor }]} 
+                onPress={handleAddToInventory}
+              >
+                <ThemedText style={[styles.submitButtonText, { color: '#ffffff' }]}>Add to Inventory</ThemedText>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

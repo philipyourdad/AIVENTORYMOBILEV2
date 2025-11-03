@@ -97,12 +97,6 @@ export default function DashboardScreen() {
           </ThemedText>
           <View style={styles.headerActions}>
             <TouchableOpacity 
-              style={styles.refreshButton}
-              onPress={onRefresh}
-            >
-              <MaterialIcons name="refresh" size={24} color={textColor} />
-            </TouchableOpacity>
-            <TouchableOpacity 
               style={styles.notificationButton}
               onPress={() => router.push('/notifications')}
             >
