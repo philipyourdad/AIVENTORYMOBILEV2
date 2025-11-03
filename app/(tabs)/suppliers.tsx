@@ -18,8 +18,16 @@ export default function SuppliersScreen() {
   const [suppliers, setSuppliers] = useState(SUPPLIERS);
   const [filteredSuppliers, setFilteredSuppliers] = useState(SUPPLIERS);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [editForm, setEditForm] = useState({
+    name: '',
+    contact: '',
+    email: '',
+    phone: '',
+    rating: ''
+  });
+  const [addForm, setAddForm] = useState({
     name: '',
     contact: '',
     email: '',
@@ -104,23 +112,38 @@ export default function SuppliersScreen() {
     setSelectedSupplier(null);
   };
 
+  const openAddModal = () => {
+    setAddForm({
+      name: '',
+      contact: '',
+      email: '',
+      phone: '+63',
+      rating: ''
+    });
+    setIsAddModalVisible(true);
+  };
+
+  const closeAddModal = () => {
+    setIsAddModalVisible(false);
+  };
+
   const handleEditSave = () => {
     if (!editForm.name || !editForm.contact || !editForm.email || !editForm.phone || !editForm.rating) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
-    // Validate Philippine phone number format (+63 followed by 9 digits)
-    const phoneRegex = /^\+63\s\d{3}\s\d{3}\s\d{4}$/;
+    // Validate Philippine phone number format (+63 followed by 10 digits)
+    const phoneRegex = /^\+63\d{10}$/;
     if (!phoneRegex.test(editForm.phone)) {
-      Alert.alert('Error', 'Please enter a valid Philippine phone number in the format: +63 9XX XXX XXXX');
+      Alert.alert('Error', 'Please enter a valid Philippine phone number (10 digits after +63)');
       return;
     }
 
-    // Validate Philippine email format (should end with .ph or .com.ph)
-    const emailRegex = /^[^\s@]+@[^\s@]+\.(ph|com\.ph)$/;
+    // Validate universal email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(editForm.email)) {
-      Alert.alert('Error', 'Please enter a valid Philippine email address (ending with .ph or .com.ph)');
+      Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
 
@@ -144,6 +167,51 @@ export default function SuppliersScreen() {
     ));
     
     closeEditModal();
+  };
+
+  const handleAddSave = () => {
+    if (!addForm.name || !addForm.contact || !addForm.email || !addForm.phone || !addForm.rating) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    // Validate Philippine phone number format (+63 followed by 10 digits)
+    const phoneRegex = /^\+63\d{10}$/;
+    if (!phoneRegex.test(addForm.phone)) {
+      Alert.alert('Error', 'Please enter a valid Philippine phone number (10 digits after +63)');
+      return;
+    }
+
+    // Validate universal email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(addForm.email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
+    const newRating = parseFloat(addForm.rating);
+    if (isNaN(newRating) || newRating < 0 || newRating > 5) {
+      Alert.alert('Error', 'Please enter a valid rating between 0 and 5');
+      return;
+    }
+
+    // Generate a new ID (in a real app, this would come from the server)
+    const newId = Date.now().toString();
+
+    const newSupplier = {
+      id: newId,
+      name: addForm.name,
+      contact: addForm.contact,
+      email: addForm.email,
+      phone: addForm.phone,
+      rating: newRating
+    };
+
+    const updatedSuppliers = [...suppliers, newSupplier];
+    setSuppliers(updatedSuppliers);
+    setFilteredSuppliers(updatedSuppliers);
+    
+    closeAddModal();
   };
 
   const handleDelete = (supplier) => {
@@ -190,6 +258,15 @@ export default function SuppliersScreen() {
         </View>
       </View>
       
+      {/* Add Supplier Button */}
+      <TouchableOpacity 
+        style={[styles.addButton, { backgroundColor: primaryColor }]} 
+        onPress={openAddModal}
+      >
+        <MaterialIcons name="add" size={20} color="#ffffff" />
+        <ThemedText style={[styles.addButtonText, { color: '#ffffff' }]}>Add Supplier</ThemedText>
+      </TouchableOpacity>
+      
       {/* Results count */}
       <ThemedText style={[styles.resultsCount, { color: textSecondaryColor }]}>
         Showing {filteredSuppliers.length} of {suppliers.length} suppliers
@@ -214,7 +291,7 @@ export default function SuppliersScreen() {
             <View style={styles.contactInfo}>
               <View style={styles.infoRow}>
                 <MaterialIcons name="person" size={16} color={textTertiaryColor} />
-                <ThemedText style={[styles.infoText, { color: textSecondaryColor }]}>{item.contact}</ThemedText>
+                <ThemedText style={[styles.infoText, { color: textSecondaryColor }]}>Contact: {item.contact}</ThemedText>
               </View>
               
               <View style={styles.infoRow}>
@@ -253,6 +330,107 @@ export default function SuppliersScreen() {
         )}
       />
       
+      {/* Add Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isAddModalVisible}
+        onRequestClose={closeAddModal}>
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+          <View style={[styles.modalContent, { backgroundColor: cardBackgroundColor }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: borderColor }]}>
+              <ThemedText type="title" style={[styles.modalTitle, { color: textColor }]}>Add New Supplier</ThemedText>
+              <TouchableOpacity onPress={closeAddModal}>
+                <MaterialIcons name="close" size={24} color={textTertiaryColor} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.formGroup}>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Supplier Business Name</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                value={addForm.name}
+                onChangeText={(text) => setAddForm({...addForm, name: text})}
+                placeholder="Enter supplier business name"
+                placeholderTextColor={textTertiaryColor}
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Contact Person Name</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                value={addForm.contact}
+                onChangeText={(text) => setAddForm({...addForm, contact: text})}
+                placeholder="Enter contact person name"
+                placeholderTextColor={textTertiaryColor}
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Email</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                value={addForm.email}
+                onChangeText={(text) => setAddForm({...addForm, email: text})}
+                placeholder="Enter email address"
+                placeholderTextColor={textTertiaryColor}
+                keyboardType="email-address"
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Phone</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                value={addForm.phone}
+                onChangeText={(text) => {
+                  // Ensure +63 is always at the beginning
+                  if (text.startsWith('+63')) {
+                    setAddForm({...addForm, phone: text});
+                  } else if (text === '') {
+                    setAddForm({...addForm, phone: '+63'});
+                  } else {
+                    // If user tries to remove +63, keep it
+                    setAddForm({...addForm, phone: '+63' + text.replace('+63', '')});
+                  }
+                }}
+                placeholder="9123456789"
+                placeholderTextColor={textTertiaryColor}
+                keyboardType="phone-pad"
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Rating (0-5)</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
+                value={addForm.rating}
+                onChangeText={(text) => setAddForm({...addForm, rating: text})}
+                placeholder="Enter rating"
+                placeholderTextColor={textTertiaryColor}
+                keyboardType="numeric"
+              />
+            </View>
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={[styles.cancelButton, { backgroundColor: borderColor }]} 
+                onPress={closeAddModal}
+              >
+                <ThemedText style={[styles.cancelButtonText, { color: textSecondaryColor }]}>Cancel</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.saveButton, { backgroundColor: primaryColor }]} 
+                onPress={handleAddSave}
+              >
+                <ThemedText style={[styles.saveButtonText, { color: '#ffffff' }]}>Add Supplier</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      
       {/* Edit Modal */}
       <Modal
         animationType="slide"
@@ -269,23 +447,23 @@ export default function SuppliersScreen() {
             </View>
             
             <View style={styles.formGroup}>
-              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Supplier Name</ThemedText>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Supplier Business Name</ThemedText>
               <TextInput
                 style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
                 value={editForm.name}
                 onChangeText={(text) => setEditForm({...editForm, name: text})}
-                placeholder="Enter supplier name"
+                placeholder="Enter supplier business name"
                 placeholderTextColor={textTertiaryColor}
               />
             </View>
             
             <View style={styles.formGroup}>
-              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Contact Person</ThemedText>
+              <ThemedText style={[styles.label, { color: textSecondaryColor }]}>Contact Person Name</ThemedText>
               <TextInput
                 style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
                 value={editForm.contact}
                 onChangeText={(text) => setEditForm({...editForm, contact: text})}
-                placeholder="Enter contact person"
+                placeholder="Enter contact person name"
                 placeholderTextColor={textTertiaryColor}
               />
             </View>
@@ -307,8 +485,18 @@ export default function SuppliersScreen() {
               <TextInput
                 style={[styles.input, { backgroundColor: cardBackgroundColor, borderColor: borderColor, color: textColor }]}
                 value={editForm.phone}
-                onChangeText={(text) => setEditForm({...editForm, phone: text})}
-                placeholder="+63 9XX XXX XXXX"
+                onChangeText={(text) => {
+                  // Ensure +63 is always at the beginning
+                  if (text.startsWith('+63')) {
+                    setEditForm({...editForm, phone: text});
+                  } else if (text === '') {
+                    setEditForm({...editForm, phone: '+63'});
+                  } else {
+                    // If user tries to remove +63, keep it
+                    setEditForm({...editForm, phone: '+63' + text.replace('+63', '')});
+                  }
+                }}
+                placeholder="9123456789"
                 placeholderTextColor={textTertiaryColor}
                 keyboardType="phone-pad"
               />
@@ -386,6 +574,19 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 8,
     fontSize: 16,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  addButtonText: {
+    fontWeight: '600',
+    fontSize: 16,
+    marginLeft: 8,
   },
   resultsCount: {
     fontSize: 14,

@@ -60,6 +60,21 @@ export default function DashboardScreen() {
       
       setNotifications(prev => [newNotification, ...prev]);
     }
+    
+    // Check for critical stock (0 items left)
+    const criticalStockItems = inventoryData.filter(item => item.stock === 0);
+    
+    if (criticalStockItems.length > 0) {
+      const criticalNotification = {
+        id: Date.now() + 1, // Ensure unique ID
+        title: "Critical Stock Alert",
+        message: `${criticalStockItems.length} item(s) are out of stock!`,
+        time: "Just now",
+        type: "error"
+      };
+      
+      setNotifications(prev => [criticalNotification, ...prev]);
+    }
   };
 
   const demandData = [
